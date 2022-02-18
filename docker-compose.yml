@@ -1,0 +1,147 @@
+#see for java tunning https://docs.oracle.com/cd/E15523_01/web.1111/e13814/jvm_tuning.htm#PERFM161
+version: '3.8'
+services:
+  #Docker Compose creates a virtual network between the services and the DNS name 
+  #used for each service is its name: that’s why it’s possible to use eureka-discovery as the hostname.
+  
+ ##########################################################################     
+ #eureka service
+ ##########################################################################  
+  eureka-server:
+    container_name: id-eureka
+    image: eureka-server
+    restart: unless-stopped
+    environment:
+       - JAVA_OPTS=
+         -Xms256M 
+         -Xmx256M
+    ports:
+      - 8761:8761
+    networks:
+      - bootcamp-network
+
+ ##########################################################################     
+ #config-server service
+ ##########################################################################  
+  config-server:
+    container_name: id-config
+    image: config-server
+    restart: on-failure
+    #volumes:
+      #this it use because we are using a local github repository /host/path:/container/path use ./ for relative path
+      #- -DREMOTE_REPOSITORY:/tmp/config-server-repo
+      #All projets will have a variable value  DEUREKA_SERVER this tell where find a eureka-server server 
+    environment:
+      - JAVA_OPTS=
+         -Xms256M 
+         -Xmx256M
+         -DEUREKA_SERVER=http://eureka-server:8761/eureka/
+         -DREMOTE_REPOSITORY=https://github.com/SanchezEmir/config-data.git
+         #-Dspring.cloud.config.server.native.searchLocations=/var/config-data
+    depends_on:
+      - eureka-server
+    ports:
+      - 8888:8888
+    networks:
+      - bootcamp-network
+
+ ##########################################################################     
+ #apigateway service
+ ##########################################################################  
+  apigateway:
+    container_name: id-gateway
+    image: api-gateway
+    restart: on-failure
+    environment:
+       - JAVA_OPTS=
+         -Xms256M 
+         -Xmx256M
+         -DEUREKA_SERVER=http://eureka-server:8761/eureka/
+    depends_on:
+      - eureka-server
+      - config-server
+    ports:
+      - 8090:8090
+    networks:
+      - bootcamp-network
+      
+ ##########################################################################     
+ #customer service
+ ##########################################################################  
+  service-customer:
+    container_name: id-customer
+    image: service-customer
+    restart: on-failure
+    environment:
+       - JAVA_OPTS=
+         -Xms256M 
+         -Xmx256M
+         -DEUREKA_SERVER=http://eureka-server:8761/eureka/
+    depends_on:
+      - eureka-server
+      - config-server
+    ports:
+      - 8080:8080
+    networks:
+      - bootcamp-network
+      
+#  ##########################################################################     
+#  #profile service
+#  ##########################################################################        
+  service-profile:
+    container_name: id-profile
+    image: service-profile
+    restart: on-failure
+    environment:
+      - JAVA_OPTS=
+         -Xms256M 
+         -Xmx256M
+         -DEUREKA_SERVER=http://eureka-server:8761/eureka/
+         #-Dspring.profiles.active=development
+    depends_on:
+      - eureka-server
+      - config-server
+    ports:
+      - 8081:8081
+    networks:
+      - bootcamp-network
+      
+ ##########################################################################     
+ #database service
+ ##########################################################################       
+  mongo:
+    container_name: mongo
+    image: mongo:4.2.18
+    restart: on-failure
+    hostname: localhost
+    volumes:
+        #allow *.sql, *.sql.gz, or *.sh and is execute only if data directory is empty
+        - ./data:/data/db
+        - /data/log:/var/log/mongodb/
+    ports:
+        - 27017:27017
+    networks:
+      - bootcamp-network
+    #environment:
+        #default postgres super user
+        #POSTGRES_USER: postgres
+         #default passwor for postgres super user, it is only the required envvar for postgres image
+        #POSTGRES_PASSWORD: qwerty
+        #main database if name is not specific thname of super user is use
+        #POSTGRES_DB: postgres  
+
+ ##########################################################################     
+ #pgadmin service
+ ##########################################################################  
+  # pgadmin4:
+  #   image: dpage/pgadmin4
+  #   restart: always
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: "admin@admin.com"
+  #     PGADMIN_DEFAULT_PASSWORD: "qwerty"
+  #   ports:
+  #     - 80:80
+  #   depends_on:
+  #     - postgres_db
+networks:
+  bootcamp-network:
