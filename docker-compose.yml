@@ -3,7 +3,7 @@ version: '3.8'
 services:
   #Docker Compose creates a virtual network between the services and the DNS name 
   #used for each service is its name: that’s why it’s possible to use eureka-discovery as the hostname.
-  
+  #
  ##########################################################################     
  #eureka service
  ##########################################################################  
